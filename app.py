@@ -5,7 +5,18 @@ import tensorflow as tf
 from PIL import Image
 import json
 
-# ==== LOAD MODEL ====
+# =======================
+#  CUSTOM PAGE CONFIG
+# =======================
+st.set_page_config(
+    page_title="Soil Classification",
+    page_icon="🌱",
+    layout="centered",
+)
+
+# =======================
+#  LOAD MODEL
+# =======================
 interpreter = tf.lite.Interpreter(model_path="soil_model_quantized.tflite")
 interpreter.allocate_tensors()
 
@@ -14,19 +25,41 @@ output_details = interpreter.get_output_details()
 
 IMG_SIZE = 220
 
-# ==== LOAD CLASS NAMES ====
+# =======================
+#  LOAD CLASS NAMES
+# =======================
 with open("class_names.json", "r") as f:
     class_names = json.load(f)
 
-# ==== REKOMENDASI TANAMAN ====
+# =======================
+#  REKOMENDASI TANAMAN
+# =======================
 tanaman_cocok = {
-    "Red soil": "🌾 Tanaman yang cocok: Kacang tanah, sorghum, millet.",
-    "Black Soil": "🌱 Tanaman yang cocok: Kapas, jagung, gandum, kedelai.",
-    "Alluvial soil": "🍃 Tanaman yang cocok: Padi, tebu, gandum, sayuran.",
-    "Clay soil": "🌿 Tanaman yang cocok: Padi, brokoli, kubis, tanaman yang butuh banyak air."
+    "Red soil": {
+        "emoji": "🧱",
+        "tanaman": "Kacang tanah, sorghum, millet.",
+        "deskripsi": "Tanah berwarna merah karena kandungan besi, cocok untuk tanaman yang tahan kondisi kering."
+    },
+    "Black Soil": {
+        "emoji": "🖤",
+        "tanaman": "Kapas, jagung, gandum, kedelai.",
+        "deskripsi": "Tanah hitam subur dengan kandungan mineral tinggi, mampu menahan air dengan baik."
+    },
+    "Alluvial soil": {
+        "emoji": "🏞️",
+        "tanaman": "Padi, tebu, gandum, sayuran.",
+        "deskripsi": "Tanah endapan sungai yang sangat subur, baik untuk hampir semua jenis tanaman."
+    },
+    "Clay soil": {
+        "emoji": "🟫",
+        "tanaman": "Padi, brokoli, kubis, dan tanaman yang butuh air banyak.",
+        "deskripsi": "Tanah liat yang padat dan mampu menahan air, cocok untuk tanaman dengan kebutuhan air tinggi."
+    }
 }
 
-# ==== PREDIKSI FUNCTION ====
+# =======================
+#  PREDIKSI FUNCTION
+# =======================
 def predict_soil(image_array):
     image_array = image_array.astype("float32")
     interpreter.set_tensor(input_details[0]['index'], image_array)
@@ -34,15 +67,30 @@ def predict_soil(image_array):
     output = interpreter.get_tensor(output_details[0]['index'])
     return output
 
-# ==== STREAMLIT UI ====
-st.title("🌱 Sistem Klasifikasi Jenis Tanah")
-st.write("Unggah gambar tanah untuk mengetahui jenis tanah dan rekomendasi tanaman yang cocok.")
 
-uploaded_file = st.file_uploader("Pilih gambar tanah", type=["png", "jpg", "jpeg"])
+# =======================
+#  UI HEADER
+# =======================
+st.markdown("""
+<h1 style='text-align:center; color:#2E7D32;'>
+🌱 Sistem Klasifikasi Jenis Tanah
+</h1>
+<p style='text-align:center; font-size:17px;'>
+Unggah foto tanah untuk mengetahui jenis tanah dan rekomendasi tanaman yang sesuai.
+</p>
+""", unsafe_allow_html=True)
+
+
+# =======================
+#  FILE UPLOADER
+# =======================
+uploaded_file = st.file_uploader("📸 Unggah gambar tanah", type=["png", "jpg", "jpeg"])
 
 if uploaded_file:
     img = Image.open(uploaded_file).convert("RGB")
-    st.image(img, caption="Gambar yang diunggah", use_column_width=True)
+
+    st.markdown("### 🖼️ Gambar yang Diunggah")
+    st.image(img, use_column_width=True)
 
     img_np = np.array(img)
     img_np = cv2.resize(img_np, (IMG_SIZE, IMG_SIZE))
@@ -55,13 +103,41 @@ if uploaded_file:
     confidence = float(np.max(pred) * 100)
 
     soil_type = class_names[class_idx]
+    data = tanaman_cocok.get(soil_type, None)
 
-    st.subheader("📌 Hasil Prediksi")
-    st.success(f"Jenis Tanah: **{soil_type}**")
-    st.write(f"Tingkat Keyakinan: **{confidence:.2f}%**")
+    # =======================
+    #  HASIL PREDIKSI CARD
+    # =======================
+    st.markdown("""
+    <br>
+    <div style="background-color:#E8F5E9; padding:20px; border-radius:12px; border-left:8px solid #43A047;">
+        <h2 style="color:#1B5E20;">🔍 Hasil Prediksi</h2>
+    """, unsafe_allow_html=True)
 
-    # ======= REKOMENDASI TANAMAN BERDASARKAN JENIS TANAH =======
-    if soil_type in tanaman_cocok:
-        st.info(tanaman_cocok[soil_type])
-    else:
-        st.warning("Belum ada rekomendasi tanaman untuk jenis tanah ini.")
+    st.markdown(
+        f"""
+        <h3 style="color:#2E7D32;">{data['emoji']} Jenis Tanah: <b>{soil_type}</b></h3>
+        <p style="font-size:16px;">Tingkat keyakinan model: <b>{confidence:.2f}%</b></p>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    st.markdown("</div><br>", unsafe_allow_html=True)
+
+    # =======================
+    #  INFORMASI DAN REKOMENDASI
+    # =======================
+    st.markdown("""
+    <div style="background-color:#F1F8E9; padding:20px; border-radius:12px; border-left:8px solid #8BC34A;">
+        <h3 style="color:#33691E;">🌿 Rekomendasi Tanaman</h3>
+    """, unsafe_allow_html=True)
+
+    st.markdown(
+        f"""
+        <p style="font-size:16px;"><b>Deskripsi:</b> {data['deskripsi']}</p>
+        <p style="font-size:16px;"><b>Tanaman yang cocok:</b> {data['tanaman']}</p>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    st.markdown("</div>", unsafe_allow_html=True)
