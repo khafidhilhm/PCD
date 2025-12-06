@@ -43,6 +43,14 @@ if uploaded_file:
 
     # Predict
     pred = predict_soil(img_np)[0]
+
+    # ======== TAMPILKAN RAW OUTPUT MODEL ========
+    st.write("🔎 Raw Model Output:", pred)
+
+    # OPTIONAL: Jika output logits, ini untuk softmax:
+    # pred = tf.nn.softmax(pred).numpy()
+    # st.write("🔎 After Softmax:", pred)
+
     class_idx = np.argmax(pred)
     confidence = float(np.max(pred) * 100)
 
